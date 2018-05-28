@@ -1,11 +1,11 @@
 package main
 
 import (
-    "fmt"
+	"fmt"
 	"html"
 	"io/ioutil"
-    "log"
-    "net/http"
+	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -71,8 +71,8 @@ func main() {
 	gorguepath := path.Join(home, "GrandOrgue")
 	recordingsDir = path.Join(gorguepath, "Audio recordings")
 
-    http.HandleFunc("/", handler)
+	http.HandleFunc("/", handler)
 	fserv := http.FileServer(http.Dir(recordingsDir))
-    http.Handle("/audio/", http.StripPrefix("/audio", fserv))
-    log.Fatal(http.ListenAndServe(":8080", nil))
+	http.Handle("/audio/", http.StripPrefix("/audio", fserv))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
