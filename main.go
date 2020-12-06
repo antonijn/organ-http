@@ -1,6 +1,7 @@
 package main
 
 import (
+	//"encoding/json"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -11,19 +12,26 @@ import (
 	"path"
 )
 
-var recordingsDir string
+type configuration struct {
+	RecordingsDir string
+	OrganName string
+}
+
+var config configuration
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
-		fmt.Fprintln(w, "<html><head><title>Johannus Dashboard</title></head><body>")
-		fmt.Fprintln(w, "<h1>Johannus Organ Dashboard</h1>")
 
-		files, err := ioutil.ReadDir(recordingsDir)
+		title := html.EscapeString(config.OrganName)
+		fmt.Fprintf(w, "<html><head><title>%s</title></head><body>", title)
+		fmt.Fprintf(w, "<h1>%s</h1>", title)
+
+		files, err := ioutil.ReadDir(config.RecordingsDir)
 		if err != nil {
 			fmt.Fprintln(w, "<p>Error: recordings inaccessible</p>")
 		} else {
-			fmt.Fprintln(w, "<h2>Recordings:</h2>")
+			fmt.Fprintln(w, "<h2>Recordings</h2>")
 			fmt.Fprintln(w, "<table><tr><th>Download</th><th>Size (MiB)</th><th>Delete</th></tr>")
 
 			for _, file := range files {
@@ -55,7 +63,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		recPath := path.Join(recordingsDir, delRec)
+		recPath := path.Join(config.RecordingsDir, delRec)
 
 		if err := os.Remove(recPath); err != nil {
 			log.Print(err)
@@ -69,10 +77,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	home := os.Getenv("HOME")
 	gorguepath := path.Join(home, "GrandOrgue")
-	recordingsDir = path.Join(gorguepath, "Audio recordings")
+	recordingsDir := path.Join(gorguepath, "Audio recordings")
+
+	config.RecordingsDir = recordingsDir
+	config.OrganName = "Johannus Modified Digital Organ"
 
 	http.HandleFunc("/", handler)
-	fserv := http.FileServer(http.Dir(recordingsDir))
+	fserv := http.FileServer(http.Dir(config.RecordingsDir))
 	http.Handle("/audio/", http.StripPrefix("/audio", fserv))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
