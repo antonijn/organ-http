@@ -15,6 +15,8 @@ import (
 type Configuration struct {
 	RecordingsDir string `json:"recordings-directory"`
 	OrganName     string `json:"organ-name"`
+	DisableDelete bool   `json:"disable-delete"`
+	DisableRename bool   `json:"disable-rename"`
 }
 
 func readJsonConfig(fileName string, res *Configuration) error {
@@ -32,7 +34,7 @@ func readJsonConfig(fileName string, res *Configuration) error {
 	return json.Unmarshal(jsonData, res)
 }
 
-var appConfig Configuration = Configuration{"", "Custom Digital Organ"}
+var appConfig Configuration = Configuration{"", "Custom Digital Organ", false, false}
 
 func getAppConfig() {
 	globalConfigPath := path.Join("/", "etc", "organ-http", "config.json")
@@ -82,9 +84,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			sort.Slice(files, func(i,j int) bool{ return files[i].ModTime().After(files[j].ModTime()) })
 
 			fmt.Fprintln(w, "<h2>Recordings</h2>")
-			fmt.Fprintln(w, "<table><tr><th>Download</th><th>Size (MiB)</th><th>Rename</th><th>Delete</th></tr>")
+
+			fmt.Fprintln(w, "<table>")
+			fmt.Fprintln(w, "<tr>")
+			fmt.Fprintln(w, "<th>Download</th>")
+			fmt.Fprintln(w, "<th>Size (MiB)</th>")
+			if !appConfig.DisableRename {
+				fmt.Fprintln(w, "<th>Rename</th>")
+			}
+			if !appConfig.DisableDelete {
+				fmt.Fprintln(w, "<th>Delete</th>")
+			}
+			fmt.Fprintln(w, "</tr>")
 
 			for _, file := range files {
+				if file.IsDir() {
+					continue
+				}
+
 				filename := file.Name()
 				escFileName := html.EscapeString(filename)
 				fmt.Fprintln(w, "<tr>")
@@ -92,18 +109,22 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintf(w, "<td><a href=\"/audio/%s\">%s</a></td>\n", escFileName, escFileName)
 				fmt.Fprintf(w, "<td>%.1f</td>\n", float32(file.Size()) / (1024 * 1024))
 
-				fmt.Fprintln(w, "<td>")
-				fmt.Fprintln(w, "<form method=\"post\" onsubmit=\"return confirm('Are you sure?');\">")
-				fmt.Fprintf(w, "<button type=\"submit\" name=\"deleterecording\" value=\"%s\">delete</button>\n", escFileName)
-				fmt.Fprintln(w, "</form>")
-				fmt.Fprintln(w, "</td>")
+				if !appConfig.DisableRename {
+					fmt.Fprintln(w, "<td>")
+					fmt.Fprintln(w, "<form method=\"post\">")
+					fmt.Fprintf(w, "<input type=\"hidden\" name=\"newname\" id=\"%s-newname\">\n", escFileName)
+					fmt.Fprintf(w, "<button type=\"submit\" name=\"renamerecording\" value=\"%s\" onClick=\"return showRenamePrompt('%s')\">rename</button>\n", escFileName, escFileName)
+					fmt.Fprintln(w, "</form>")
+					fmt.Fprintln(w, "</td>")
+				}
 
-				fmt.Fprintln(w, "<td>")
-				fmt.Fprintln(w, "<form method=\"post\">")
-				fmt.Fprintf(w, "<input type=\"hidden\" name=\"newname\" id=\"%s-newname\">\n", escFileName)
-				fmt.Fprintf(w, "<button type=\"submit\" name=\"renamerecording\" value=\"%s\" onClick=\"return showRenamePrompt('%s')\">rename</button>\n", escFileName, escFileName)
-				fmt.Fprintln(w, "</form>")
-				fmt.Fprintln(w, "</td>")
+				if !appConfig.DisableDelete {
+					fmt.Fprintln(w, "<td>")
+					fmt.Fprintln(w, "<form method=\"post\" onsubmit=\"return confirm('Are you sure?');\">")
+					fmt.Fprintf(w, "<button type=\"submit\" name=\"deleterecording\" value=\"%s\">delete</button>\n", escFileName)
+					fmt.Fprintln(w, "</form>")
+					fmt.Fprintln(w, "</td>")
+				}
 
 				fmt.Fprintln(w, "</tr>")
 			}
