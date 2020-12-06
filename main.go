@@ -81,7 +81,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			fmt.Fprintln(w, "<p>Error: recordings inaccessible</p>")
 		} else {
-			sort.Slice(files, func(i,j int) bool{ return files[i].ModTime().After(files[j].ModTime()) })
+			sort.Slice(files, func(i, j int) bool { return files[i].ModTime().After(files[j].ModTime()) })
 
 			fmt.Fprintln(w, "<h2>Recordings</h2>")
 
@@ -107,7 +107,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintln(w, "<tr>")
 
 				fmt.Fprintf(w, "<td><a href=\"/audio/%s\">%s</a></td>\n", escFileName, escFileName)
-				fmt.Fprintf(w, "<td>%.1f</td>\n", float32(file.Size()) / (1024 * 1024))
+				fmt.Fprintf(w, "<td>%.1f</td>\n", float32(file.Size())/(1024*1024))
 
 				if !appConfig.DisableRename {
 					fmt.Fprintln(w, "<td>")
