@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io/ioutil"
@@ -12,22 +12,51 @@ import (
 	"path"
 )
 
-type configuration struct {
-	RecordingsDir string
-	OrganName string
+type Configuration struct {
+	RecordingsDir string `json:"recordings-directory"`
+	OrganName     string `json:"organ-name"`
 }
 
-var config configuration
+func readJsonConfig(fileName string, res *Configuration) error {
+	jsonFile, err := os.Open(fileName)
+	if err != nil {
+		return err
+	}
+
+	defer jsonFile.Close()
+
+	jsonData, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(jsonData, res)
+}
+
+var appConfig Configuration = Configuration{"", "Custom Digital Organ"}
+
+func getAppConfig() {
+	globalConfigPath := path.Join("/", "etc", "organ-http", "config.json")
+	localConfigPath := path.Join(os.Getenv("HOME"), ".config", "organ-http", "config.json")
+
+	err := readJsonConfig(globalConfigPath, &appConfig)
+	if err != nil {
+		log.Println(err)
+	}
+	err = readJsonConfig(localConfigPath, &appConfig)
+	if err != nil {
+		log.Println(err)
+	}
+}
 
 func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 
-		title := html.EscapeString(config.OrganName)
+		title := html.EscapeString(appConfig.OrganName)
 		fmt.Fprintf(w, "<html><head><title>%s</title></head><body>", title)
 		fmt.Fprintf(w, "<h1>%s</h1>", title)
 
-		files, err := ioutil.ReadDir(config.RecordingsDir)
+		files, err := ioutil.ReadDir(appConfig.RecordingsDir)
 		if err != nil {
 			fmt.Fprintln(w, "<p>Error: recordings inaccessible</p>")
 		} else {
@@ -63,7 +92,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		recPath := path.Join(config.RecordingsDir, delRec)
+		recPath := path.Join(appConfig.RecordingsDir, delRec)
 
 		if err := os.Remove(recPath); err != nil {
 			log.Print(err)
@@ -75,15 +104,12 @@ func handler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	home := os.Getenv("HOME")
-	gorguepath := path.Join(home, "GrandOrgue")
-	recordingsDir := path.Join(gorguepath, "Audio recordings")
+	getAppConfig()
 
-	config.RecordingsDir = recordingsDir
-	config.OrganName = "Johannus Modified Digital Organ"
+	log.Printf("Starting file server in directory `%s'\n", appConfig.RecordingsDir)
 
 	http.HandleFunc("/", handler)
-	fserv := http.FileServer(http.Dir(config.RecordingsDir))
+	fserv := http.FileServer(http.Dir(appConfig.RecordingsDir))
 	http.Handle("/audio/", http.StripPrefix("/audio", fserv))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
