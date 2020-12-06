@@ -88,6 +88,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "<table>")
 			fmt.Fprintln(w, "<tr>")
 			fmt.Fprintln(w, "<th>Download</th>")
+			fmt.Fprintln(w, "<th>Datetime</th>")
 			fmt.Fprintln(w, "<th>Size (MiB)</th>")
 			if !appConfig.DisableRename {
 				fmt.Fprintln(w, "<th>Rename</th>")
@@ -107,6 +108,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprintln(w, "<tr>")
 
 				fmt.Fprintf(w, "<td><a href=\"/audio/%s\">%s</a></td>\n", escFileName, escFileName)
+				fmt.Fprintf(w, "<td>%s</td>\n", file.ModTime().Format("2006-01-02 15:04"))
 				fmt.Fprintf(w, "<td>%.1f</td>\n", float32(file.Size())/(1024*1024))
 
 				if !appConfig.DisableRename {
